@@ -16,10 +16,18 @@ def get_free_port():
     s.close()
     return port
 
-# Determine the directory where static assets reside (either build/web/ or current path)
-DIRECTORY = os.path.dirname(os.path.abspath(__file__))
-if os.path.exists(os.path.join(DIRECTORY, 'build', 'web')):
-    DIRECTORY = os.path.join(DIRECTORY, 'build', 'web')
+# Determine the directory where static assets reside
+if hasattr(sys, '_MEIPASS'):
+    # Running inside a PyInstaller bundle
+    DIRECTORY = os.path.join(sys._MEIPASS, 'web')
+    if not os.path.exists(DIRECTORY):
+        DIRECTORY = sys._MEIPASS
+else:
+    DIRECTORY = os.path.dirname(os.path.abspath(__file__))
+    if not os.path.exists(os.path.join(DIRECTORY, 'build', 'web')) and os.path.exists(os.path.join(DIRECTORY, '..', 'build', 'web')):
+        DIRECTORY = os.path.join(DIRECTORY, '..', 'build', 'web')
+    elif os.path.exists(os.path.join(DIRECTORY, 'build', 'web')):
+        DIRECTORY = os.path.join(DIRECTORY, 'build', 'web')
 
 PORT = get_free_port()
 
@@ -61,9 +69,38 @@ class RoRetroHandler(http.server.SimpleHTTPRequestHandler):
         pass
 
 def open_browser():
-    """Waits for server setup and triggers browser navigation."""
+    """Waits for server setup and triggers browser navigation in standalone window mode if possible."""
     time.sleep(0.6)
-    webbrowser.open(f"http://127.0.0.1:{PORT}")
+    url = f"http://127.0.0.1:{PORT}"
+    
+    if sys.platform == 'win32':
+        import subprocess
+        edge_paths = [
+            os.path.expandvars(r"%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe"),
+            os.path.expandvars(r"%ProgramFiles%\Microsoft\Edge\Application\msedge.exe"),
+        ]
+        chrome_paths = [
+            os.path.expandvars(r"%ProgramFiles%\Google\Chrome\Application\chrome.exe"),
+            os.path.expandvars(r"%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe"),
+            os.path.expandvars(r"%LocalAppData%\Google\Chrome\Application\chrome.exe"),
+        ]
+        
+        launched = False
+        # Try Edge first (preinstalled on Windows), then Chrome
+        for path in edge_paths + chrome_paths:
+            if os.path.exists(path):
+                try:
+                    subprocess.Popen([path, f"--app={url}"])
+                    launched = True
+                    break
+                except Exception:
+                    pass
+        
+        if not launched:
+            webbrowser.open(url)
+    else:
+        # On Linux/Unix, fall back to default browser
+        webbrowser.open(url)
 
 if __name__ == '__main__':
     print(f"Starting Ro-Retro Game Hub (Flutter Edition) server...")
