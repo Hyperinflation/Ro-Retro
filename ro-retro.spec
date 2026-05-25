@@ -5,7 +5,7 @@ Summary:        Retro oyunlar için oyun merkez uygulaması (Ro-ASD - Flutter)
 BuildArch:      noarch
 
 License:        MIT
-URL:            https://github.com/ro-asd/ro-retro
+URL:            https://github.com/Hyperinflation/Ro-Retro
 Source0:        %{name}-%{version}.tar.gz
 
 # We require python3 to run our local webserver and xdg-utils to open browser
