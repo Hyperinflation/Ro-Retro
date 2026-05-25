@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base href="/">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="Ro-Retro Oyun Merkezi Uygulaması (Flutter Edition)">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="ro_retro">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>Ro-Retro | Retro Oyun Merkezi</title>
+  <link rel="manifest" href="manifest.json">
+
+  <!-- Premium Typography for styling loading screen -->
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+  
+  <style>
+    body {
+      background-color: #060409;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+    #loading-container {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Outfit', sans-serif;
+      color: #f3f4f6;
+    }
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 3px solid rgba(168, 85, 247, 0.1);
+      border-top: 3px solid #a855f7;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      box-shadow: 0 0 15px rgba(168, 85, 247, 0.3);
+      margin-bottom: 20px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .loading-text {
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+    .loading-subtext {
+      font-size: 13px;
+      color: #9ca3af;
+      margin-top: 6px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Loading Splash Screen -->
+  <div id="loading-container">
+    <div class="spinner"></div>
+    <div class="loading-text">Ro-<span style="color: #a855f7;">Retro</span> Yükleniyor</div>
+    <div class="loading-subtext">Retro Oyunlar için Oyun Merkez Uygulaması</div>
+  </div>
+
+  <!-- IndexedDB ROM Storage and Utility Script -->
+  <script>
+    const dbName = "RoRetroDatabase";
+    const storeName = "games";
+    let db = null;
+
+    function initDb() {
+      return new Promise((resolve, reject) => {
+        if (db) return resolve(db);
+        const request = indexedDB.open(dbName, 1);
+        request.onupgradeneeded = (e) => {
+          const database = e.target.result;
+          if (!database.objectStoreNames.contains(storeName)) {
+            database.createObjectStore(storeName, { keyPath: "id", autoIncrement: true });
+          }
+        };
+        request.onsuccess = (e) => {
+          db = e.target.result;
+          resolve(db);
+        };
+        request.onerror = (e) => reject(e);
+      });
+    }
+
+    // Save ROM bytes to database
+    window.saveRomToDb = async function(title, system, year, publisher, description, romBytes, coverBytes) {
+      const database = await initDb();
+      return new Promise((resolve, reject) => {
+        const transaction = database.transaction(storeName, "readwrite");
+        const store = transaction.objectStore(storeName);
+        
+        const romBlob = new Blob([romBytes], { type: "application/octet-stream" });
+        let coverBlob = null;
+        if (coverBytes && coverBytes.length > 0) {
+          coverBlob = new Blob([coverBytes], { type: "image/png" });
+        }
+        
+        const game = {
+          title: title,
+          system: system,
+          year: parseInt(year) || new Date().getFullYear(),
+          publisher: publisher || "Bilinmiyor",
+          description: description || "",
+          romBlob: romBlob,
+          coverBlob: coverBlob,
+          isCustom: true
+        };
+        
+        const request = store.add(game);
+        request.onsuccess = (e) => resolve(e.target.result);
+        request.onerror = (e) => reject(e);
+      });
+    };
+
+    // Fetch list of ROMs from database (blobs are mapped to object URLs dynamically)
+    window.fetchRomsFromDb = async function() {
+      const database = await initDb();
+      return new Promise((resolve, reject) => {
+        const transaction = database.transaction(storeName, "readonly");
+        const store = transaction.objectStore(storeName);
+        const request = store.getAll();
+        request.onsuccess = (e) => {
+          const results = e.target.result;
+          const games = results.map(game => {
+            let coverUrl = "";
+            if (game.coverBlob) {
+              coverUrl = URL.createObjectURL(game.coverBlob);
+            }
+            return {
+              id: game.id,
+              title: game.title,
+              system: game.system,
+              year: game.year,
+              publisher: game.publisher,
+              description: game.description,
+              coverUrl: coverUrl,
+              isCustom: true
+            };
+          });
+          resolve(JSON.stringify(games));
+        };
+        request.onerror = (e) => reject(e);
+      });
+    };
+
+    // Get Blob URL for ROM execution
+    window.getRomBlobUrl = async function(id) {
+      const database = await initDb();
+      return new Promise((resolve, reject) => {
+        const transaction = database.transaction(storeName, "readonly");
+        const store = transaction.objectStore(storeName);
+        const request = store.get(parseInt(id));
+        request.onsuccess = (e) => {
+          const game = e.target.result;
+          if (game && game.romBlob) {
+            resolve(URL.createObjectURL(game.romBlob));
+          } else {
+            resolve("");
+          }
+        };
+        request.onerror = (e) => reject(e);
+      });
+    };
+
+    // Delete ROM from DB
+    window.deleteRomFromDb = async function(id) {
+      const database = await initDb();
+      return new Promise((resolve, reject) => {
+        const transaction = database.transaction(storeName, "readwrite");
+        const store = transaction.objectStore(storeName);
+        const request = store.delete(parseInt(id));
+        request.onsuccess = () => resolve(true);
+        request.onerror = (e) => reject(e);
+      });
+    };
+
+    // Reset database
+    window.clearAllRomsFromDb = async function() {
+      const database = await initDb();
+      return new Promise((resolve, reject) => {
+        const transaction = database.transaction(storeName, "readwrite");
+        const store = transaction.objectStore(storeName);
+        const request = store.clear();
+        request.onsuccess = () => resolve(true);
+        request.onerror = (e) => reject(e);
+      });
+    };
+
+    // Shutdown signal for Python background launcher
+    window.addEventListener('beforeunload', () => {
+      navigator.sendBeacon('/shutdown', null);
+    });
+  </script>
+
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>

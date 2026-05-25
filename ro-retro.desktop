@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Ro-Retro
+Comment=Retro Oyunlar için Oyun Merkez Uygulaması (Flutter)
+Exec=/usr/bin/ro-retro
+Icon=ro-retro
+Terminal=false
+Type=Application
+Categories=Game;Emulator;
+Keywords=retro;games;emulator;nintendo;sega;gameboy;gba;nes;snes;oyun;emülatör;flutter;
+StartupNotify=true
