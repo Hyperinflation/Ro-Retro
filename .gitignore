@@ -48,3 +48,6 @@ app.*.map.json
 # Exceptions to keep Flutter web assets and packaging tarball in the repo for Copr
 !/build/web/
 !/linux-pkg/ro-retro-1.0.0.tar.gz
+
+# Ignore Windows build output
+/dist/
