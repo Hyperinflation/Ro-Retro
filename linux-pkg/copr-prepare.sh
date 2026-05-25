@@ -5,9 +5,10 @@
 # In Copr, the output directory is passed as the first argument, or we can copy to the current directory if not specified.
 
 OUT_DIR=${1:-.}
+SCRIPT_DIR=$(dirname "$0")
 echo "Preparing Copr sources..."
 echo "Copying ro-retro.spec to $OUT_DIR"
-cp ro-retro.spec "$OUT_DIR"/
+cp "$SCRIPT_DIR"/ro-retro.spec "$OUT_DIR"/
 echo "Copying ro-retro-1.0.0.tar.gz to $OUT_DIR"
-cp ro-retro-1.0.0.tar.gz "$OUT_DIR"/
+cp "$SCRIPT_DIR"/ro-retro-1.0.0.tar.gz "$OUT_DIR"/
 echo "Done!"

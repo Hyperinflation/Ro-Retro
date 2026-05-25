@@ -21,7 +21,7 @@ EmulatorJS ile WebAssembly üzerinden doğrudan tarayıcıda oynamasına izin ve
 Bu sürüm tamamen Flutter çerçevesi (framework) kullanılarak geliştirilmiştir.
 
 %prep
-%setup -c
+%autosetup
 
 %build
 # Nothing to compile here. The Flutter app is pre-compiled to Web assets.
